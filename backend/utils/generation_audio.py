@@ -7,8 +7,7 @@ import requests
 from google.cloud import texttospeech
 from pydub import AudioSegment
 
-# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:\\Current Project\\@Podcast-AI\\backend\\gcp.json'
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:\\Current Project\\Voice Chabot UK\\audio\\gcp-creditial.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:\\Current Project\\@Podcast-AI\\backend\\gcp.json'
 
 client = texttospeech.TextToSpeechClient()
 
