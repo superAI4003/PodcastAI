@@ -27,4 +27,6 @@ def generate_conversation(prompt_text, article):
     json_response = responses.candidates[0].content.parts[0].text
     json_data = json.loads(json_response)
     formatted_json = json.dumps(json_data, indent=4)
+    with open('generated_conversation.json', 'w') as json_file:
+        json.dump(json_data, json_file, indent=4)
     return json_data

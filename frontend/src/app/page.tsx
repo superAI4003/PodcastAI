@@ -17,7 +17,37 @@ export default function Home() {
   const [imageUrl, setImageUrl] = useState("");
   const [generated, setGenerated] = useState(false);
   const [generatedText, setGeneratedText] = useState([]);
+  const [audioURL, setAudioURL] = useState("");
+  const [audioLoading, setAudioLoading] = useState(false);
 
+  const handleGenerateAudio = async () => {
+    setAudioLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('conversation', JSON.stringify(generatedText));
+      const response = await fetch('http://127.0.0.1:8080/generate-audio', {
+        method: 'POST',
+        body: formData, // Always send formData
+        headers: undefined, // No need for Content-Type header with FormData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      setAudioURL(audioUrl);
+    } catch (error) {
+      console.error('Error generating audio:', error);
+    } finally {
+      setAudioLoading(false);
+    }
+  }
+  const handleAudioPlay = () => {
+    const audio = new Audio(audioURL);
+    audio.play();
+  }
   const handleGenerate = async () => {
     setGenLoading(true);
   
@@ -101,7 +131,15 @@ export default function Home() {
                   ></textarea>
                 </div>)
               }
-              <button className={`w-full text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer`
+              <div className="flex flex-col gap-4 py-2">
+                <label htmlFor="prompt-select" className="text-white">Select Prompt:</label>
+                <select id="prompt-select" className="p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white focus:ring-sky-500 focus:border-sky-500">
+                  <option value="1">Prompt 1</option>
+                  <option value="2">Prompt 2</option>
+                  <option value="3">Prompt 3</option>
+                </select>
+              </div>
+              <button className={`w-full text-white bg-cyan-500 py-3 mt-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer`
               }
                 disabled={(!fileUploaded && !textMode )|| (textMode && text === "")}
                 onClick={handleGenerate} >
@@ -110,6 +148,24 @@ export default function Home() {
                   Generate
                 </div>
               </button>
+              <div className="w-full flex justify-between  gap-2">
+              <button className={`${audioURL ? 'w-3/4' : 'w-full'} text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800  hover:bg-cyan-600 cursor-pointer`
+              }
+                disabled={generatedText.length === 0}
+                onClick={handleGenerateAudio} >
+                <div className="flex justify-center items-center gap-4">
+                  {audioLoading && <Bars fill="cyan" className="h-4 w-4" />}
+                  Generate Audio
+                </div>
+              </button>
+              {audioURL && (
+                <button
+                  onClick={handleAudioPlay}
+                  className="w-1/4 text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer">
+                  Play
+                </button>
+              )}
+                </div>
             </div>
           </div>
 

@@ -2,9 +2,11 @@ from fastapi import FastAPI, File, UploadFile, Form
 import os
 import json
 from utils.get_text import get_text_from_audio, get_text_from_video, get_text_from_image
+from utils.generation_audio import generate_audio
 from utils.generation_conversation import generate_conversation
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -58,3 +60,9 @@ async def generate_conversation_by_text_endpoint(text: str = Form(...)):
 
     result = generate_conversation(prompt, text)
     return {"result": result}
+
+@app.post("/generate-audio")
+async def generate_audio_endpoint(conversation: str = Form(...)):
+
+    audio_file_path = generate_audio(conversation)
+    return FileResponse('media/podcast.mp3', media_type="audio/mpeg", filename="podcast.mp3")
