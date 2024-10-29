@@ -7,6 +7,7 @@ from utils.generation_conversation import generate_conversation
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from dotenv import load_dotenv
 
 app = FastAPI()
 
@@ -17,7 +18,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:\\Current Project\\@Podcast-AI\\backend\\gcp.json'
+
+load_dotenv()
+
+# Now you can access the environment variable
+google_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 # Load prompt
 with open('config/prompts.json', 'r') as f:

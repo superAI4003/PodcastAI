@@ -25,7 +25,7 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append('conversation', JSON.stringify(generatedText));
-      const response = await fetch('http://127.0.0.1:8080/generate-audio', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate-audio`, {
         method: 'POST',
         body: formData, // Always send formData
         headers: undefined, // No need for Content-Type header with FormData
@@ -60,8 +60,8 @@ export default function Home() {
   
     try {
       const endpoint = textMode 
-        ? 'http://127.0.0.1:8080/generate-conversation-by-text' 
-        : 'http://127.0.0.1:8080/generate-conversation';
+      ?`${process.env.NEXT_PUBLIC_API_URL}/generate-conversation-by-text`
+      :`${process.env.NEXT_PUBLIC_API_URL}/generate-conversation`;
   
       const response = await fetch(endpoint, {
         method: 'POST',

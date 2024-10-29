@@ -6,8 +6,11 @@ import re
 import requests
 from google.cloud import texttospeech
 from pydub import AudioSegment
+from dotenv import load_dotenv
+load_dotenv()
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:\\Current Project\\@Podcast-AI\\backend\\gcp.json'
+# Now you can access the environment variable
+google_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 client = texttospeech.TextToSpeechClient()
 
