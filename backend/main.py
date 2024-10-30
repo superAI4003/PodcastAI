@@ -24,18 +24,9 @@ load_dotenv()
 # Now you can access the environment variable
 google_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
-# Load prompt
-with open('config/prompts.json', 'r') as f:
-    prompts = json.load(f)
-
-def find_prompt_by_id(id):
-    for prompt_obj in prompts:
-        if prompt_obj['id'] == id:
-            return prompt_obj['prompt']
-    return "Default prompt"  # Provide a default prompt or handle the None case
 
 @app.post("/generate-conversation")
-async def generate_conversation_endpoint(file: UploadFile = File(None)):
+async def generate_conversation_endpoint(file: UploadFile = File(None), prompt: str = Form(...)):
     if file:
         # Save the uploaded file
         file_location = f"./media/{file.filename}"
@@ -50,7 +41,6 @@ async def generate_conversation_endpoint(file: UploadFile = File(None)):
     else:
         article = ""
 
-    prompt = find_prompt_by_id(1)
     if prompt is None:
         return JSONResponse(status_code=400, content={"error": "Prompt not found"})
 
@@ -58,8 +48,8 @@ async def generate_conversation_endpoint(file: UploadFile = File(None)):
     return {"result": result}
 
 @app.post("/generate-conversation-by-text")
-async def generate_conversation_by_text_endpoint(text: str = Form(...)):
-    prompt = find_prompt_by_id(1)
+async def generate_conversation_by_text_endpoint(text: str = Form(...), prompt: str = Form(...)):
+
     if prompt is None:
         return JSONResponse(status_code=400, content={"error": "Prompt not found"})
 

@@ -15,8 +15,8 @@ google_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 client = texttospeech.TextToSpeechClient()
 
 speaker_voice_map = {
-    "Sascha": "en-US-Wavenet-D",  # We'll handle Sascha with the ElevenLabs API
-    "Marina": "en-US-Journey-O"  # Marina uses the Google API
+    "person1": "en-US-Wavenet-D",
+    "person2": "en-US-Journey-O" 
 }
 
 def synthesize_speech_google(text, speaker, index):

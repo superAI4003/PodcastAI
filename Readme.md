@@ -22,7 +22,15 @@ This guide will help you set up and run the project, which consists of a fronten
    npm install
    ```
 
-3. **Run the frontend development server:**
+3. **Create and configure the `.env` file:**
+
+   Create a file named `.env` in the `frontend` directory and add the following configuration:
+
+   ```plaintext
+   NEXT_PUBLIC_API_URL=http://127.0.0.1:8080
+   ```
+
+4. **Run the frontend development server:**
 
    ```bash
    npm run dev
@@ -44,15 +52,16 @@ This guide will help you set up and run the project, which consists of a fronten
    pip install -r requirements.txt
    ```
 
-3. **Check GCP Credentials Path:**
+3. **Create and configure the `.env` file:**
 
-   Ensure that the path to your GCP credentials in `main.py` is correct. The current path is set as:
+   Create a file named `.env` in the `backend` directory and add the following configuration:
 
-   ```python
-   os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'D:\\Current Project\\@Podcast-AI\\backend\\gcp.json'
+   ```plaintext
+   GOOGLE_APPLICATION_CREDENTIALS=D:\Current Project\@Podcast-AI\backend\gcp.json
    ```
 
    Update this path if your credentials are located elsewhere.
+ 
 
 4. **Run the backend server:**
 
@@ -61,7 +70,3 @@ This guide will help you set up and run the project, which consists of a fronten
    ```
 
    This will start the backend server, accessible at `http://localhost:8080`.
-
-## Additional Notes
-
-- Ensure that your GCP credentials have the necessary permissions for the operations you intend to perform.

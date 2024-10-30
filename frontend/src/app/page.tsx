@@ -6,6 +6,8 @@ import { Bars } from 'react-loading-icons'
 import ImageSkelton from "./components/uis/ImageSkelton";
 import Switch from "react-switch";
 
+import promptsData from './config/prompts.json'
+
 export default function Home() {
   const [textMode, setTextMode] = useState(true);
   const [text, setText] = useState("");
@@ -19,7 +21,19 @@ export default function Home() {
   const [generatedText, setGeneratedText] = useState([]);
   const [audioURL, setAudioURL] = useState("");
   const [audioLoading, setAudioLoading] = useState(false);
+  const [prompts, setPrompts] = useState<{ id: number; prompt: string; }[]>([]); // Define the type of prompts
+  const [selectedPrompt, setSelectedPrompt] = useState("");
+  useEffect(() => {
+    setPrompts(promptsData); // Directly set the prompts from the imported JSON
+  }, []);
 
+  const handlePromptChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = parseInt(event.target.value);
+    const prompt = prompts.find(p => p.id === selectedId);
+    if (prompt) {
+      setSelectedPrompt(prompt.prompt);
+    }
+  };
   const handleGenerateAudio = async () => {
     setAudioLoading(true);
     try {
@@ -50,29 +64,31 @@ export default function Home() {
   }
   const handleGenerate = async () => {
     setGenLoading(true);
-  
+
     const formData = new FormData();
     if (file) {
       formData.append('file', file);
+      formData.append('prompt', selectedPrompt);
     } else if (textMode) {
       formData.append('text', text); // Append text as form data
+      formData.append('prompt', selectedPrompt);
     }
-  
+
     try {
-      const endpoint = textMode 
-      ?`${process.env.NEXT_PUBLIC_API_URL}/generate-conversation-by-text`
-      :`${process.env.NEXT_PUBLIC_API_URL}/generate-conversation`;
-  
+      const endpoint = textMode
+        ? `${process.env.NEXT_PUBLIC_API_URL}/generate-conversation-by-text`
+        : `${process.env.NEXT_PUBLIC_API_URL}/generate-conversation`;
+
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData, // Always send formData
         headers: undefined, // No need for Content-Type header with FormData
       });
-  
+
       const data = await response.json();
       if (data.error) {
         console.error(data.error);
-      } else { 
+      } else {
         setGenerated(true);
         setGeneratedText(data.result);
       }
@@ -87,7 +103,7 @@ export default function Home() {
       const file = event.target.files[0];
       setFile(file);
       setFileUploaded(true);
-      
+
     }
   };
 
@@ -124,7 +140,7 @@ export default function Home() {
                   </label>
                 </div>) : (
                 <div>
-                  <textarea id="message" rows={15} className="block p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white  focus:ring-sky-500 focus:border-sky-500"
+                  <textarea id="message" rows={8} className="block p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white  focus:ring-sky-500 focus:border-sky-500"
                     placeholder="Write a small description of type of style you want your space to be..."
                     value={text}
                     onChange={(e) => setText(e.target.value)}
@@ -133,15 +149,27 @@ export default function Home() {
               }
               <div className="flex flex-col gap-4 py-2">
                 <label htmlFor="prompt-select" className="text-white">Select Prompt:</label>
-                <select id="prompt-select" className="p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white focus:ring-sky-500 focus:border-sky-500">
-                  <option value="1">Prompt 1</option>
-                  <option value="2">Prompt 2</option>
-                  <option value="3">Prompt 3</option>
+                <select
+                  id="prompt-select"
+                  className="p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white focus:ring-sky-500 focus:border-sky-500"
+                  onChange={handlePromptChange} // Add onChange handler
+                >
+                  {prompts.map((prompt, index) => (
+                    <option key={index} value={prompt.id}>Prompt{prompt.id}</option>
+                  ))}
                 </select>
+                <textarea
+                  id="message"
+                  rows={8}
+                  className="block p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white focus:ring-sky-500 focus:border-sky-500"
+                  placeholder="Write a small description of type of style you want your space to be..."
+                  value={selectedPrompt} // Bind textarea value to selectedPrompt state
+                  onChange={(e) => setSelectedPrompt(e.target.value)} // Allow manual editing
+                ></textarea>
               </div>
               <button className={`w-full text-white bg-cyan-500 py-3 mt-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer`
               }
-                disabled={(!fileUploaded && !textMode )|| (textMode && text === "")}
+                disabled={(!fileUploaded && !textMode) || (textMode && text === "")}
                 onClick={handleGenerate} >
                 <div className="flex justify-center items-center gap-4">
                   {genLoading && <Bars fill="cyan" className="h-4 w-4" />}
@@ -149,29 +177,29 @@ export default function Home() {
                 </div>
               </button>
               <div className="w-full flex justify-between  gap-2">
-              <button className={`${audioURL ? 'w-3/4' : 'w-full'} text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800  hover:bg-cyan-600 cursor-pointer`
-              }
-                disabled={generatedText.length === 0}
-                onClick={handleGenerateAudio} >
-                <div className="flex justify-center items-center gap-4">
-                  {audioLoading && <Bars fill="cyan" className="h-4 w-4" />}
-                  Generate Audio
-                </div>
-              </button>
-              {audioURL && (
-                <button
-                  onClick={handleAudioPlay}
-                  className="w-1/4 text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer">
-                  Play
+                <button className={`${audioURL ? 'w-3/4' : 'w-full'} text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800  hover:bg-cyan-600 cursor-pointer`
+                }
+                  disabled={generatedText.length === 0}
+                  onClick={handleGenerateAudio} >
+                  <div className="flex justify-center items-center gap-4">
+                    {audioLoading && <Bars fill="cyan" className="h-4 w-4" />}
+                    Generate Audio
+                  </div>
                 </button>
-              )}
-                </div>
+                {audioURL && (
+                  <button
+                    onClick={handleAudioPlay}
+                    className="w-1/4 text-white bg-cyan-500 py-3 my-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer">
+                    Play
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="w-3/4 ">
             <div className="w-full p-5 h-[700px] bg-slate-800 rounded-xl relative  flex flex-col overflow-auto ">
-            {generatedText.map((message, index) => (
+              {generatedText.map((message, index) => (
                 <div key={index} className={` max-w-[60%] mb-4 p-3 rounded-lg ${index % 2 === 1 ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 text-black self-start'}`}>
                   <p>{message.text}</p>
                 </div>

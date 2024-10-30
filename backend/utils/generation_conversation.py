@@ -27,5 +27,14 @@ def generate_conversation(prompt_text, article):
     json_response = responses.candidates[0].content.parts[0].text
     json_data = json.loads(json_response)
     formatted_json = json.dumps(json_data, indent=4)
-   
+
+    speakers = {}
+    current_speaker_id = 1
+
+    for entry in json_data:
+        speaker = entry['speaker']
+        if speaker not in speakers:
+            speakers[speaker] = f'person{current_speaker_id}'
+            current_speaker_id += 1
+        entry['speaker'] = speakers[speaker]
     return json_data
