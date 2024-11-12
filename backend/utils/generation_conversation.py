@@ -12,14 +12,14 @@ generation_config = GenerationConfig(
 )
 
 
-def generate_conversation(prompt_text, article):
+def generate_conversation(prompt_text, article, userPrompt):
     vertexai.init(project="bookcastlm", location="us-central1")
     model = GenerativeModel(
         "gemini-1.5-flash-001",
         system_instruction=[prompt_text]
     )
     responses = model.generate_content(
-        [article],
+        [article,userPrompt],
         generation_config=generation_config,
         stream=False,
     )
@@ -27,7 +27,7 @@ def generate_conversation(prompt_text, article):
     json_response = responses.candidates[0].content.parts[0].text
     json_data = json.loads(json_response)
     formatted_json = json.dumps(json_data, indent=4)
-
+ 
     speakers = {}
     current_speaker_id = 1
 
