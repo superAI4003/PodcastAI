@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form
 from fastapi.responses import JSONResponse, FileResponse
 from utils.get_text import get_text_from_audio, get_text_from_video, get_text_from_image
-from utils.generation_audio import generate_audio, get_voice_list, get_heygen_voices_list
+from utils.generation_audio import generate_audio, get_voice_list, get_elevenlabs_voices_list
 from utils.generation_conversation import generate_conversation
 import json
 router = APIRouter()
@@ -45,7 +45,7 @@ async def get_voice_list_endpoint():
     voice_list = get_voice_list()
     return {"voice_list": voice_list}
 
-@router.post("/get-heygen-voice-list")
-async def get_heygen_voice_list_endpoint():
-    voice_list = get_heygen_voices_list()
+@router.post("/get-elevenlabs-voice-list")
+async def get_elevenlabs_voice_list_endpoint():
+    voice_list = get_elevenlabs_voices_list()
     return {"voice_list": voice_list}

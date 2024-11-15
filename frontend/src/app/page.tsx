@@ -43,13 +43,18 @@ export default function Home() {
   const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
   const [newPrompt, setNewPrompt] = useState({ title: "", description: "" });
   const [voiceList,setVoiceList] = useState([]);
+  const [voiceElevenLabs,setVoiceElevenLabs] = useState<{voice_id:string,name:string}[]>([]);
+  const [speaker1,setSpeaker1] = useState(true);
+  const [speaker2,setSpeaker2] = useState(true);
   const [editingPrompt, setEditingPrompt] = useState<{
     id: number;
     title: string;
     description: string;
   } | null>(null);
+
+  
   // Add these new handlers
-  const [currentSpeaker,setCurrentSpeaker]=useState({person1:"en-US-Casual-K",person2:"en-US-Casual-K"})
+  const [currentSpeaker,setCurrentSpeaker]=useState({person1:"en-US-Casual-K",style1:true,person2:"en-US-Casual-K",style2:true})
   const handleEditPrompt = async () => {
     if (!editingPrompt) return;
 
@@ -155,6 +160,11 @@ export default function Home() {
         });
         const voiceData = await voiceResponse.json();
         setVoiceList(voiceData.voice_list);
+        const voiceElevenLabsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-elevenlabs-voice-list`, {
+          method: 'POST'
+        });
+        const voiceElevenLabsData = await voiceElevenLabsResponse.json();
+        setVoiceElevenLabs(voiceElevenLabsData.voice_list);
   
         // Set initial selected prompts
         if (data.length > 0) {
@@ -558,37 +568,70 @@ export default function Home() {
 
               <div className="flex justify-between gap-2">
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="prompt-select" className="text-white">
-                    Speaker 1
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="prompt-select" className="text-white">
+                      Speaker 1
+                    </label>
+                    <Switch
+                      onChange={() => setSpeaker1(!speaker1)}
+                      checked={speaker1}
+                      id="speaker1-switch"
+                      handleDiameter={16} // Smaller handle diameter
+                      height={20} // Smaller height
+                    />
+                  </div>
                 <select
                   id="speaker1-select"
                   className="block p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white focus:ring-sky-500 focus:border-sky-500"
-                  onChange={(e)=>setCurrentSpeaker({...currentSpeaker,person1:e.target.value})}
+                  onChange={(e)=>setCurrentSpeaker({...currentSpeaker,person1:e.target.value,style1:speaker1})}
                   value={currentSpeaker.person1}
                   >
-                  {voiceList.map((voice) => (
+                 {speaker1?voiceList.map((voice) => (
                     <option key={voice} value={voice}>
                       {voice}
                     </option>
-                  ))}
+                  )):
+                  voiceElevenLabs.map((voice) => (
+                    <option key={voice.voice_id} value={voice.voice_id}>
+                      {voice.name}
+                    </option>
+                  ))
+                
+                }
                 </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="prompt-select" className="text-white text-right">
-                    Speaker 2
-                  </label>
+                <div className="flex items-center gap-2">
+                    
+                    <Switch
+                      onChange={() => setSpeaker2(!speaker2)}
+                      checked={speaker2}
+                      id="speaker2-switch"
+                      handleDiameter={16} // Smaller handle diameter
+                      height={20} // Smaller height
+                    />
+                    <label htmlFor="prompt-select" className="text-white">
+                      Speaker 2
+                    </label>
+                  </div>
                 <select
                   id="speaker2-select"
                   className="block p-2.5 w-full text-sm rounded-lg border bg-gray-700 outline-none border-gray-600 placeholder-gray-400 text-white focus:ring-sky-500 focus:border-sky-500"
-                  onChange={(e)=>setCurrentSpeaker({...currentSpeaker,person2:e.target.value})}
+                  onChange={(e)=>setCurrentSpeaker({...currentSpeaker,person2:e.target.value,style2:speaker2})}
                   value={currentSpeaker.person2}
                 >
-                  {voiceList.map((voice) => (
+                  {speaker2?voiceList.map((voice) => (
                     <option key={voice} value={voice}>
                       {voice}
                     </option>
-                  ))}
+                  )):
+                  voiceElevenLabs.map((voice) => (
+                    <option key={voice.voice_id} value={voice.voice_id  }>
+                      {voice.name}
+                    </option>
+                  ))
+                
+                }
                 </select>
                 </div>
               </div>
