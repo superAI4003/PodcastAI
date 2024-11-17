@@ -69,7 +69,7 @@ def natural_sort_key(filename):
     return [int(text) if text.isdigit() else text for text in re.split(r'(\d+)', filename)]
 # 
 
-def generate_audio(conversation, currentSpeaker):
+def generate_audio(conversation, currentSpeaker,output_file = "media/podcast.mp3"):
     if isinstance(conversation, str):
         conversation = json.loads(conversation)
     if isinstance(currentSpeaker, str):
@@ -85,7 +85,6 @@ def generate_audio(conversation, currentSpeaker):
         else:
             print(f"Unexpected format for conversation part: {part}")
     audio_folder = "media/audio-files"
-    output_file = "media/podcast.mp3"
     merge_audios(audio_folder, output_file, generated_count)  # Pass the count to the merge function
 
 def merge_audios(audio_folder, output_file, limit):

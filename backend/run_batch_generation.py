@@ -15,19 +15,22 @@ db_session = next(get_db())
 
 def get_args():
     parser = argparse.ArgumentParser(description="Run batch generation with specific parameters.")
+    parser.add_argument('--m', action='store_true', help='Specify the mode of operation.') 
     parser.add_argument('-article', type=str, required=False, help='Article to be discussed.')
     parser.add_argument('-user_prompt', type=str, required=False, help='Name as saved in the database')
     parser.add_argument('-system_prompt', type=str, required=False, help='Name as saved in the database')
     parser.add_argument('-speaker_1', type=str, required=False, help='Parameter for speaker 1')
     parser.add_argument('-speaker_2', type=str, required=False, help='Parameter for speaker 2')
     parser.add_argument('-help', action='store_true', help='Display help information with available prompts and speakers')
+    parser.add_argument('--o', action='store_true', help='Specify the mode of operation.') 
+    parser.add_argument('-output', type=str, required=False, help='Parameter for speaker 2')
     args = parser.parse_args()
 
     if args.help:
         display_help_info()
         exit()
 
-    return args.user_prompt, args.system_prompt, args.speaker_1, args.speaker_2, args.article
+    return args.user_prompt, args.system_prompt, args.speaker_1, args.speaker_2, args.article, args.output
 
 def display_help_info():
     print("Help Information:")
@@ -82,9 +85,9 @@ def get_current_speaker(args_speaker_1, args_speaker_2):
             "style2":True
         }
 
-args_user_prompt, args_system_prompt, args_speaker_1, args_speaker_2, args_article = get_args()
+args_user_prompt, args_system_prompt, args_speaker_1, args_speaker_2, args_article, args_output = get_args()
 user_prompt, system_prompt = get_prompts(args_user_prompt, args_system_prompt)
 get_current_speaker(args_speaker_1, args_speaker_2)
 current_speaker = get_current_speaker(args_speaker_1, args_speaker_2)
 generated_conversation = generate_conversation(args_article, user_prompt, system_prompt)
-generate_audio(generated_conversation, current_speaker)
+generate_audio(generated_conversation, current_speaker, args_output)

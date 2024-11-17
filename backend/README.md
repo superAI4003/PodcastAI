@@ -42,12 +42,12 @@
 - `-speaker_1`: Specify the first speaker.
 - `-speaker_2`: Specify the second speaker.
 - `-help`: Display help information with available prompts and speakers.
-
+-  `-output`: Specify the output file path.
 
 2. Run the `run_batch_generation.py` file with the following command:
 
    ```bash
-   python run_batch_generation.py -article "Generative AI"  -user_prompt "UserPrompt1" -system_prompt "SysPrompt 1" -speaker_1 "en-US-Neural2-A" -speaker_2 "en-US-Journey-O"
+   python run_batch_generation.py --m -article "Generative AI"  -user_prompt "UserPrompt1" -system_prompt "SysPrompt 1" -speaker_1 "en-US-Neural2-A" -speaker_2 "en-US-Journey-O" --o -output "./result.mp3""
    ```
 3. You can see help information with the following command:
 
