@@ -1,13 +1,9 @@
 "use client";
-
-import Image from "next/image";
+ 
 import { useEffect, useState } from "react";
-import { Bars } from "react-loading-icons";
-import ImageSkelton from "./components/uis/ImageSkelton";
+import { Bars } from "react-loading-icons"; 
 import Switch from "react-switch";
-
-import { NavDropdown } from "react-bootstrap";
-import { DropdownSubmenu, NavDropdownMenu } from "react-bootstrap-submenu";
+ 
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
