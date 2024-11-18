@@ -17,8 +17,9 @@ def get_args():
     parser = argparse.ArgumentParser(description="Run batch generation with specific parameters.")
     parser.add_argument('--m', action='store_true', help='Specify the mode of operation.') 
     parser.add_argument('-article', type=str, required=False, help='Article to be discussed.')
-    parser.add_argument('-user_prompt', type=str, required=False, help='Name as saved in the database')
-    parser.add_argument('-system_prompt', type=str, required=False, help='Name as saved in the database')
+    parser.add_argument('-user_prompt_db', type=str, required=False, help='Name as saved in the database')
+    parser.add_argument('-user_prompt_cmdline', type=str, required=False, help='Direct user prompt from command line')
+    parser.add_argument('-system_prompt_db', type=str, required=False, help='Name as saved in the database')
     parser.add_argument('-speaker_1', type=str, required=False, help='Parameter for speaker 1')
     parser.add_argument('-speaker_2', type=str, required=False, help='Parameter for speaker 2')
     parser.add_argument('-help', action='store_true', help='Display help information with available prompts and speakers')
@@ -26,11 +27,14 @@ def get_args():
     parser.add_argument('-output', type=str, required=False, help='Parameter for speaker 2')
     args = parser.parse_args()
 
+    
     if args.help:
         display_help_info()
         exit()
+    if bool(args.user_prompt_db) == bool(args.user_prompt_cmdline):
+        parser.error("Either -user_prompt_db or -user_prompt_cmdline must be provided, but not both.")
 
-    return args.user_prompt, args.system_prompt, args.speaker_1, args.speaker_2, args.article, args.output
+    return args.user_prompt_db, args.system_prompt_db, args.speaker_1, args.speaker_2, args.article, args.output, args.user_prompt_cmdline
 
 def display_help_info():
     print("Help Information:")
@@ -47,27 +51,33 @@ def display_help_info():
     for voice in all_voices:
         print(voice)
 
-def get_prompts(args_user_prompt, args_system_prompt):
+def get_user_prompt(args_user_prompt):
     user_prompts = read_user_prompts(db=db_session)
-    prompts = read_prompts(db=db_session)
     user_prompt = None
+    for uprompt in user_prompts:
+        if uprompt.title == args_user_prompt:  # Check if the title matches the user argument
+            user_prompt = uprompt.description
+    if user_prompt is None:
+        print("User prompt not found.")
+        print("Available User Prompts:")
+        for uprompt in user_prompts:
+            print(uprompt.title)
+        exit()
+    return user_prompt
+
+def get_system_prompt(args_system_prompt):
+    prompts = read_prompts(db=db_session)
     system_prompt = None
     for prompt in prompts:
         if prompt.title == args_system_prompt:  # Check if the title matches the user argument
             system_prompt = prompt.description
-    for uprompt in user_prompts:
-        if uprompt.title == args_user_prompt:  # Check if the title matches the user argument
-            user_prompt = uprompt.description
-    if user_prompt is None or system_prompt is None:
-        print("Not found prompt you input.")
-        print("Available User_Prompts:")
-        for uprompt in user_prompts:
-            print(uprompt.title)
-        print("Available System_Prompts:")
+    if system_prompt is None:
+        print("System prompt not found.")
+        print("Available System Prompts:")
         for prompt in prompts:
             print(prompt.title)
         exit()
-    return user_prompt, system_prompt
+    return system_prompt
 
 def get_current_speaker(args_speaker_1, args_speaker_2):
     all_voices = get_voice_list()
@@ -85,8 +95,14 @@ def get_current_speaker(args_speaker_1, args_speaker_2):
             "style2":True
         }
 
-args_user_prompt, args_system_prompt, args_speaker_1, args_speaker_2, args_article, args_output = get_args()
-user_prompt, system_prompt = get_prompts(args_user_prompt, args_system_prompt)
+args_user_prompt, args_system_prompt, args_speaker_1, args_speaker_2, args_article, args_output, args_user_prompt_cmdline = get_args()
+
+if args_user_prompt_cmdline:
+    user_prompt = args_user_prompt_cmdline
+    system_prompt = get_system_prompt(args_system_prompt)
+if args_user_prompt:
+    user_prompt = get_user_prompt(args_user_prompt)
+    system_prompt = get_system_prompt(args_system_prompt)
 get_current_speaker(args_speaker_1, args_speaker_2)
 current_speaker = get_current_speaker(args_speaker_1, args_speaker_2)
 generated_conversation = generate_conversation(args_article, user_prompt, system_prompt)

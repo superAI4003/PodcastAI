@@ -37,8 +37,8 @@
 ### Options
 
 - `-article`: Specify the article to be discussed.
-- `-user_prompt`: Specify the user prompt by name as saved in the database.
-- `-system_prompt`: Specify the system prompt by name as saved in the database.
+- `-user_prompt_db`: Specify the user prompt by name as saved in the database.
+- `-system_prompt_db`: Specify the system prompt by name as saved in the database.
 - `-speaker_1`: Specify the first speaker.
 - `-speaker_2`: Specify the second speaker.
 - `-help`: Display help information with available prompts and speakers.
@@ -47,7 +47,10 @@
 2. Run the `run_batch_generation.py` file with the following command:
 
    ```bash
-   python run_batch_generation.py --m -article "Generative AI"  -user_prompt "UserPrompt1" -system_prompt "SysPrompt 1" -speaker_1 "en-US-Neural2-A" -speaker_2 "en-US-Journey-O" --o -output "./result.mp3""
+   python run_batch_generation.py --m -article "Generative AI"  -user_prompt_db "UserPrompt1" -system_prompt_db "SysPrompt 1" -speaker_1 "en-US-Neural2-A" -speaker_2 "en-US-Journey-O" --o -output "./result.mp3""
+   ```
+   ```bash
+   python run_batch_generation.py --m -article "Generative AI"  -user_prompt_cmdline  "Ensure the dialogue is at least 30000 characters long and full of emotion. speakers should be Sascha and Marina. Sascha writes the articles, and Marina asks the engaging questions. The podcast is titled The Machine Learning Engineer. Use short sentences for speech synthesis. Maintain excitement throughout. Do not mention last names or use phrases like: 'Thanks for having me, Marina!' Include filler words like well or repeat words to make it sound natural." -system_prompt_db "SysPrompt 1" -speaker_1 "en-US-Neural2-A" -speaker_2 "en-US-Journey-O" --o -output "./result.mp3""
    ```
 3. You can see help information with the following command:
 
