@@ -30,11 +30,11 @@ def generate_conversation(prompt_text, article, userPrompt):
  
     speakers = {}
     current_speaker_id = 1
-
-    for entry in json_data:
-        speaker = entry['speaker']
-        if speaker not in speakers:
-            speakers[speaker] = f'person{current_speaker_id}'
-            current_speaker_id += 1
-        entry['speaker'] = speakers[speaker]
+    print(json_data)
+    for i, item in enumerate(json_data):
+        if i % 2 == 0:
+            item['speaker'] = 'person1'
+        else:
+            item['speaker'] = 'person2'
+    print(json_data)
     return json_data

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Bars } from "react-loading-icons"; 
 import Switch from "react-switch";
- 
+import React, { useRef } from 'react';
+import { AiOutlineDownload ,AiFillPlayCircle ,AiFillPauseCircle ,AiOutlineArrowRight ,AiOutlineArrowLeft ,AiOutlineUpload} from "react-icons/ai";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
@@ -14,9 +15,12 @@ export default function Home() {
   const [genLoading, setGenLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null); // State to hold the file
   const [generated, setGenerated] = useState(false);
-  const [generatedText, setGeneratedText] = useState<{ text: string }[]>([]);
-  const [audioURL, setAudioURL] = useState("");
+  const [generatedText, setGeneratedText] = useState<{ text: string }[][]>([]);
+  const [audioURL, setAudioURL] = useState<string[]>([]);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [audio, setAudio] = useState<HTMLAudioElement[]>([]);
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
   const [prompts, setPrompts] = useState<
     { id: number; title: string; description: string }[]
   >([]);
@@ -42,13 +46,14 @@ export default function Home() {
   const [voiceElevenLabs,setVoiceElevenLabs] = useState<{voice_id:string,name:string}[]>([]);
   const [speaker1,setSpeaker1] = useState(true);
   const [speaker2,setSpeaker2] = useState(true);
+  const  [processingIndex, setProcessingIndex] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingPrompt, setEditingPrompt] = useState<{
     id: number;
     title: string;
     description: string;
   } | null>(null);
-
-  
+  const [currentIndex, setCurrentIndex] = useState(1);
   // Add these new handlers
   const [currentSpeaker,setCurrentSpeaker]=useState({person1:"en-US-Casual-K",style1:true,person2:"en-US-Casual-K",style2:true})
   const handleEditPrompt = async () => {
@@ -79,7 +84,20 @@ export default function Home() {
       console.error("Error updating prompt:", error);
     }
   };
-
+  const [parameters, setParameters] = useState<string[]>([]);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+      setUploadedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = (e.target?.result as string).split('\n').filter(line => line.trim() !== '');
+        setParameters(text);
+      };
+      reader.readAsText(file);
+    }
+  };
   const handleDeletePrompt = async (id: number) => {
     try {
       const response = await fetch(
@@ -138,25 +156,28 @@ export default function Home() {
       try {
         // Fetch prompts
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/prompts`
+          `${process.env.NEXT_PUBLIC_API_URL}/prompts/`
         );
         const data = await response.json();
         setPrompts(data);
         
         // Fetch user prompts
         const userResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/userprompts`
+          `${process.env.NEXT_PUBLIC_API_URL}/userprompts/`
         );
         const userData = await userResponse.json();
         setUserPrompts(userData);
         
         // Fetch voice list
-        const voiceResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-voice-list`, {
-          method: 'POST'
+        const voiceResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-voice-list/`, {
+          method: 'POST',
+headers: {
+        'Content-Type': 'application/json'
+    },
         });
         const voiceData = await voiceResponse.json();
         setVoiceList(voiceData.voice_list);
-        const voiceElevenLabsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-elevenlabs-voice-list`, {
+        const voiceElevenLabsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get-elevenlabs-voice-list/`, {
           method: 'POST'
         });
         const voiceElevenLabsData = await voiceElevenLabsResponse.json();
@@ -271,25 +292,35 @@ export default function Home() {
   const handleGenerateAudio = async () => {
     setAudioLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("conversation", JSON.stringify(generatedText));
-      formData.append("currentSpeaker",JSON.stringify(currentSpeaker))
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/generate-audio`,
-        {
-          method: "POST",
-          body: formData, // Always send formData
-          headers: undefined, // No need for Content-Type header with FormData
+      const audioUrls: string[] = [];
+      for(let [index, conversation] of Array.from(generatedText.entries())){
+        setProcessingIndex(index)
+        const formData = new FormData();
+        console.log(currentSpeaker);
+        console.log(generatedText)
+        formData.append("currentSpeaker",JSON.stringify(currentSpeaker))
+        
+        formData.append("conversation", JSON.stringify(conversation));
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/generate-audio`,
+          {
+            method: "POST",
+            body: formData, // Always send formData
+            headers: undefined, // No need for Content-Type header with FormData
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to generate audio");
         }
-      );
 
-      if (!response.ok) {
-        throw new Error("Failed to generate audio");
-      }
-
-      const blob = await response.blob();
-      const audioUrl = URL.createObjectURL(blob);
-      setAudioURL(audioUrl);
+        const blob = await response.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        audioUrls.push(audioUrl)
+    }
+      setAudioURL(audioUrls);
+      const audioObjects = audioUrls.map((url) => new Audio(url));
+      setAudio(audioObjects);
     } catch (error) {
       console.error("Error generating audio:", error);
     } finally {
@@ -297,40 +328,84 @@ export default function Home() {
     }
   };
   const handleAudioPlay = () => {
-    const audio = new Audio(audioURL);
-    audio.play();
+     if (audio) {
+      // If audio is currently playing, stop it
+      if (isPlaying) {
+        audio[currentIndex-1].pause();
+        setIsPlaying(false);
+      } else {
+        // If audio is not playing, start it
+        audio[currentIndex-1].play();
+        setIsPlaying(true);
+      }
+    } else {
+      // If audio object has not been created yet, create it
+      const audioObjects = audioURL.map((url) => new Audio(url));
+      setAudio(audioObjects);
+      audioObjects[currentIndex-1].play();
+      setIsPlaying(true);
+    }
   };
+  const handleFileUploadClick = () => {
+    // Trigger the file input click event
+    fileInputRef.current && fileInputRef.current.click();
+  };
+
   const handleGenerate = async () => {
+    console.log(parameters);
     setGenLoading(true); 
     const formData = new FormData();
     if (file) {
       formData.append("file", file);
-      formData.append("prompt", selectedPrompt?.description || "");
-      formData.append("userPrompt",selectedUserPrompt?.description || "")
     } else if (textMode) {
-      formData.append("text", text); // Append text as form data
-      formData.append("prompt", selectedPrompt?.description || "");
-      formData.append("userPrompt",selectedUserPrompt?.description || "") 
+      formData.append("text", text); // Append text as form dat
     }
-
+    formData.append("userPrompt", selectedUserPrompt?.description || "");
+   
     try {
+      let allResults = [];
       const endpoint = textMode
         ? `${process.env.NEXT_PUBLIC_API_URL}/generate-conversation-by-text`
         : `${process.env.NEXT_PUBLIC_API_URL}/generate-conversation`;
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        body: formData, // Always send formData
-        headers: undefined, // No need for Content-Type header with FormData
-      });
-
-      const data = await response.json();
-      if (data.error) {
-        console.error(data.error);
-      } else {
+        
+        if (!selectedPrompt?.description.includes("$1")) {
+          formData.set("prompt", selectedPrompt?.description || "");
+          const response = await fetch(endpoint, {
+            method: "POST",
+            body: formData, // Always send formData
+            headers: undefined, // No need for Content-Type header with FormData
+          });
+          const data = await response.json();
+          if (data.error) {
+            console.error(data.error);
+          } else {
+            allResults.push(data.result);
+          }
+        }
+        else {
+          for(let [index, parameter] of Array.from(parameters.entries())){
+            // Your code here...
+            setProcessingIndex(index);
+            const sprompt=selectedPrompt.description.replace("$1", parameter);
+            formData.set("prompt", sprompt);
+            const response = await fetch(endpoint, {
+              method: "POST",
+              body: formData, // Always send formData
+              headers: undefined, // No need for Content-Type header with FormData
+            });
+      
+            const data = await response.json();
+            if (data.error) {
+              console.error(data.error);
+            } else {
+              allResults.push(data.result);
+            }
+            
+          }
+        }
         setGenerated(true);
-        setGeneratedText(data.result);
-      }
+        setGeneratedText(allResults);
+        console.log(allResults)
     } catch (error) {
       console.error("Error generating conversation:", error);
     } finally {
@@ -448,7 +523,7 @@ export default function Home() {
                     ))}
                   </select>
                   <button
-                    className="px-3  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
+                    className="px-2  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
                     title="Add New Prompt"
                     onClick={() => setIsAddModalOpen(true)}
                   >
@@ -466,7 +541,7 @@ export default function Home() {
                     </svg>
                   </button>
                   <button
-                    className="px-3 text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
+                    className="px-2 text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
                     title="Edit Prompts"
                     onClick={() => setIsEditModalOpen(true)}
                   >
@@ -479,6 +554,10 @@ export default function Home() {
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
                   </button>
+                  <button className="px-2 text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center" title="Upload File" onClick={handleFileUploadClick}>
+                      <input ref={fileInputRef} type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
+                      <AiOutlineUpload style={{width: "20px", height: "20px"}}/>
+                    </button>
                 </div>
                 <textarea
                   id="message"
@@ -513,7 +592,7 @@ export default function Home() {
                     ))}
                   </select>
                   <button
-                    className="px-3  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
+                    className="px-2  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
                     title="Add New User Prompt"
                     onClick={() => setIsUserAddModalOpen(true)}
                   >
@@ -531,7 +610,7 @@ export default function Home() {
                     </svg>
                   </button>
                   <button
-                    className="px-3  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
+                    className="px-2  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
                     title="Edit User Prompts"
                     onClick={() => setIsUserEditModalOpen(true)}
                   >
@@ -646,8 +725,7 @@ export default function Home() {
               </button>
               <div className="w-full flex justify-between  gap-2">
                 <button
-                  className={`${
-                    audioURL ? "w-3/4" : "w-full"
+                  className={`${ "w-full"
                   } text-white bg-cyan-500 py-2 rounded-lg disabled:bg-cyan-800  hover:bg-cyan-600 cursor-pointer`}
                   disabled={generatedText.length === 0}
                   onClick={handleGenerateAudio}
@@ -657,24 +735,63 @@ export default function Home() {
                     Generate Audio
                   </div>
                 </button>
-                {audioURL && (
-                  <button
-                    onClick={handleAudioPlay}
-                    className="w-1/4 text-white bg-cyan-500 py-2 rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
-                  >
-                    Play
-                  </button>
-                )}
+                
               </div>
             </div>
           </div>
 
-          <div className="w-3/4 flex flex-col gap-5 ">
+          <div className="w-3/4 flex flex-col gap-3 ">
             <h1 className="text-white/80 w-full font-extrabold text-4xl py-6 px-8 drop-shadow-lg bg-slate-800 rounded-xl border-l-4 border-sky-500">
               Podcast AI
             </h1>
-            <div className="w-full p-5 h-[700px] bg-slate-800 rounded-xl relative  flex flex-col overflow-auto ">
-              {generatedText.map((message, index) => (
+            
+            <div className="w-full flex flex-col h-[740px]">
+            <div className="w-full h-12  bg-slate-600 rounded-t-xl flex justify-between items-center p-2  ">
+              {/* {audioURL && ( */}
+                  {genLoading ?(<p className="pl-10 text-white text-[16px]">Processing Script generation item:{processingIndex+1}/{parameters.length} <span className="text-red-500">({parameters[processingIndex]})</span> </p>):(<div></div>)}
+                  {audioLoading ?(<p className="pl-10 text-white text-[16px]">Processing Audio generation item:{processingIndex+1}/{parameters.length} <span className="text-red-500">({parameters[processingIndex]})</span> </p>):(<div></div>)}
+                  
+                  <div className="flex gap-2 items-center">
+                    <button  className="  text-white bg-cyan-500 px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                    onClick={()=>setCurrentIndex(currentIndex-1)}
+                    disabled={currentIndex === 1 || !generated || isPlaying}
+                    >
+                      <AiOutlineArrowLeft style={{width: "24px", height: "24px"}}/> </button>
+                      {!generated?(<p className="font-bold text-gray-400">0/0</p>):
+                      (<p className="font-bold text-white">{currentIndex}/{generatedText.length}</p>)}
+                    <button  className="  text-white bg-cyan-500 px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                     onClick={()=>setCurrentIndex(currentIndex+1)}
+                     disabled={currentIndex === generatedText.length || !generated ||isPlaying
+                     }
+                    > 
+                      <AiOutlineArrowRight style={{width: "24px", height: "24px"}} />
+                    </button>
+                    
+                    <button
+                      onClick={handleAudioPlay}
+                      className="  text-white bg-cyan-500 px-1  py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                      disabled={!audioURL || audioURL.length === 0}
+                    >
+                    {isPlaying ? (
+                        <AiFillPauseCircle style={{width: "24px", height: "24px"}}/>
+                      ) : (
+                        <AiFillPlayCircle style={{width: "24px", height: "24px"}}/>
+                      )}
+                    </button>
+                    {!(!audioURL || audioURL.length === 0) && <a
+                    href={audioURL[currentIndex-1]}
+                    download="generated_audio"
+                    className={`text-white bg-cyan-500 flex px-1 py-1 justify-center items-center rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer`}  
+                  >
+                    <AiOutlineDownload style={{width: "24px", height: "24px"}}/>
+
+                  </a>}
+                  </div>
+                  {/* )} */}
+            </div>
+            <div className="w-full p-5 min-h-[690px]  bg-slate-800 rounded-b-xl relative  flex flex-col overflow-auto ">
+              
+              {generated && generatedText[currentIndex-1].map((message, index) => (
                 <div
                   key={index}
                   className={` max-w-[60%] mb-4 p-3 rounded-lg ${
@@ -686,6 +803,7 @@ export default function Home() {
                   <p>{message.text}</p>
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </div>

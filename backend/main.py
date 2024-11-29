@@ -6,16 +6,23 @@ from database import engine
 import models
 from routes import prompts, generation, userprompts
 from google.cloud import texttospeech
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+
+
+
 # Create tables
 models.Base.metadata.create_all(bind=engine)
-app = FastAPI()
+app = FastAPI(
+    title="My backend"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 load_dotenv()

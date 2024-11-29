@@ -7,9 +7,12 @@ COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm install
+RUN npm install @next/swc-linux-x64-musl
 
 # Copy the rest of your app's source code from your host to your image filesystem.
 COPY . .
+
+
 
 # Build the Next.js application
 RUN npm run build
