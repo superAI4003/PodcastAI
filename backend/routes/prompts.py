@@ -16,7 +16,7 @@ def create_prompt(prompt: schemas.PromptCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[schemas.Prompt])
 def read_prompts(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    prompts = db.query(models.Prompt).offset(skip).limit(limit).all()
+    prompts = db.query(models.Prompt).offset(skip).all()
     return prompts
 
 @router.get("/{prompt_id}", response_model=schemas.Prompt)

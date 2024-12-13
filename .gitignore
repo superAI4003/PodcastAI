@@ -20,6 +20,7 @@ parts/
 sdist/
 var/
 pod/
+pod-test/
 pod-deployed/
 wheels/
 share/python-wheels/

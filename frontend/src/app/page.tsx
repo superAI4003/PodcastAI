@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bars } from "react-loading-icons";
+import { Bars, Circles } from "react-loading-icons";
 import Switch from "react-switch";
 import React, { useRef } from "react";
+import { ModalStatus, PromptType } from "./components/types";
+import { formatDuration, formatDownloadFile } from "./components/utils";
+
 import {
   AiOutlineDownload,
   AiFillPlayCircle,
@@ -11,42 +14,52 @@ import {
   AiOutlineArrowRight,
   AiOutlineArrowLeft,
   AiOutlineUpload,
+  AiOutlineEllipsis,
+  AiOutlineHistory,
+  AiOutlineRotateRight,
+  AiFillPlusSquare,
+  AiFillEdit,
+  AiTwotoneSave,
 } from "react-icons/ai";
-
+import { DownloadModal } from "./components/modals/DownloadModal";
+import { Timer } from "./components/labels/Timers";
+import SetStartIndexModal from "./components/modals/SetStartIndexModal";
+import { HistoryModal } from "./components/modals/HistoryModal";
+import { Title } from "./components/labels/Title";
+import { GeneratedTextPanel } from "./components/labels/GeneratedTextPanel";
+import { title } from "process";
 export default function Home() {
+  const [modalStatus, setModalStatus] = useState<ModalStatus>(
+    ModalStatus.Closed
+  );
+  const [isNoUpdate, setIsNoUpdate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenCategory, setIsGenCategory] = useState(true);
   const [textMode, setTextMode] = useState(true);
   const [text, setText] = useState("");
   const [fileUploaded, setFileUploaded] = useState(false); // State
-
   const [genLoading, setGenLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null); // State to hold the file
   const [generated, setGenerated] = useState(false);
-  const [generatedText, setGeneratedText] = useState<{ text: string }[][]>([]);
+  const [generatedText, setGeneratedText] = useState<
+    Array<{ id: number; script: any[]; category: string }>
+  >([]);
   const [audioURL, setAudioURL] = useState<string[]>([]);
   const [audioLoading, setAudioLoading] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement[]>([]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [scriptTimers, setScriptTimers] =useState<string[]>([]);
-  const [audioTimers, setAudioTimers] =useState<string[]>([]);
+  const [scriptTimers, setScriptTimers] = useState<string[]>([]);
+  const [audioTimers, setAudioTimers] = useState<string[]>([]);
   const [scriptTotalTimer, setScriptTotalTimer] = useState(0);
   const [audioTotalTimer, setAudioTotalTimer] = useState(0);
-  const [prompts, setPrompts] = useState<
-    { id: number; title: string; description: string }[]
-  >([]);
+  const [prompts, setPrompts] = useState<PromptType[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<{
     id: number;
     title: string;
     description: string;
   }>();
-  const [userPrompts, setUserPrompts] = useState<
-    { id: number; title: string; description: string }[]
-  >([]);
-  const [selectedUserPrompt, setSelectedUserPrompt] = useState<{
-    id: number;
-    title: string;
-    description: string;
-  }>();
+  const [userPrompts, setUserPrompts] = useState<PromptType[]>([]);
+  const [selectedUserPrompt, setSelectedUserPrompt] = useState<PromptType>();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUserAddModalOpen, setIsUserAddModalOpen] = useState(false);
@@ -60,19 +73,21 @@ export default function Home() {
   const [speaker2, setSpeaker2] = useState(true);
   const [processingIndex, setProcessingIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [editingPrompt, setEditingPrompt] = useState<{
-    id: number;
-    title: string;
-    description: string;
-  } | null>(null);
+  const [editingPrompt, setEditingPrompt] = useState<PromptType | null>(null);
   const [currentIndex, setCurrentIndex] = useState(1);
-  // Add these new handlers
+  const [historyData, setHistoryData] = useState<any[][]>();
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [isEditGeneratedText, setIsEditGeneratedText] = useState(false);
+  const [isEditGeneratedTextSave, setIsEditGeneratedTextSave] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState({
     person1: "en-US-Casual-K",
     style1: true,
     person2: "en-US-Casual-K",
     style2: true,
   });
+
+  const [startIndex, setStartIndex] = useState(1);
+
   const handleEditPrompt = async () => {
     if (!editingPrompt) return;
 
@@ -102,6 +117,7 @@ export default function Home() {
     }
   };
   const [parameters, setParameters] = useState<string[]>([]);
+  const [genStatus, setGenStatus] = useState<string[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files && event.target.files[0];
@@ -224,10 +240,31 @@ export default function Home() {
 
     fetchData();
   }, []);
+  const fetchHistoryData = async () => {
+    const scriptsResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/scripts/`
+    );
+    const scriptsData = await scriptsResponse.json();
+    const groupedScripts = scriptsData.reduce(
+      (grouped: { [key: string]: any[] }, script: any) => {
+        const time = script.start_time; // Use the full start_time for grouping
+        if (!grouped[time]) {
+          grouped[time] = [];
+        }
+        grouped[time].push(script);
+        return grouped;
+      },
+      {}
+    );
 
+    // Convert the groupedScripts object into an array of arrays
+    const groupedScriptsArray = Object.values(groupedScripts) as any[][];
+    setHistoryData(groupedScriptsArray);
+    return Promise.resolve();
+  };
   const handlePromptChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedID = parseInt(event.target.value);
-    setSelectedPrompt(prompts[selectedID - 1]);
+    setSelectedPrompt(prompts[selectedID]);
   };
 
   const handleEditUserPrompt = async () => {
@@ -311,8 +348,10 @@ export default function Home() {
   const handleUserPromptChange = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
+    console.log(userPrompts);
     const selectedID = parseInt(event.target.value);
-    setSelectedUserPrompt(userPrompts[selectedID - 1]);
+    console.log(selectedID);
+    setSelectedUserPrompt(userPrompts[selectedID]);
   };
   const handleGenerateAudio = async () => {
     setAudioLoading(true);
@@ -322,11 +361,9 @@ export default function Home() {
       for (let [index, conversation] of Array.from(generatedText.entries())) {
         setProcessingIndex(index);
         const formData = new FormData();
-        console.log(currentSpeaker);
-        console.log(generatedText);
         formData.append("currentSpeaker", JSON.stringify(currentSpeaker));
-
-        formData.append("conversation", JSON.stringify(conversation));
+        formData.append("id", conversation.id.toString());
+        formData.append("conversation", JSON.stringify(conversation.script));
         const startTime = performance.now();
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/generate-audio`,
@@ -337,11 +374,11 @@ export default function Home() {
           }
         );
         const endTime = performance.now();
-        const duration = endTime-startTime;
+        const duration = endTime - startTime;
         const formattedDuration = formatDuration(duration);
-        totalTimer+=duration;
+        totalTimer += duration;
         setAudioTotalTimer(totalTimer);
-        setAudioTimers(prevTimers => [...prevTimers, formattedDuration]);
+        setAudioTimers((prevTimers) => [...prevTimers, formattedDuration]);
         if (!response.ok) {
           throw new Error("Failed to generate audio");
         }
@@ -385,14 +422,49 @@ export default function Home() {
     // Trigger the file input click event
     fileInputRef.current && fileInputRef.current.click();
   };
-  const formatDuration = (duration: number) => {
-    const durationInSeconds = duration / 1000; // Convert to seconds
-    const minutes = Math.floor(durationInSeconds / 60);
-    const seconds = Math.floor(durationInSeconds % 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`; // Format to MM:SS
+  const addScript = async (
+    title: string,
+    gscript: string,
+    stime: number,
+    etime: number,
+    category: string
+  ) => {
+    // function body...
+    const startDate = new Date(stime + performance.timeOrigin);
+    const endDate = new Date(etime + performance.timeOrigin);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/scripts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title,
+            gscript,
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
+            category,
+            noupdate: isNoUpdate,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
   const handleGenerate = async () => {
-    console.log(parameters);
+    const slicedParameters = parameters.slice(startIndex - 1);
+    setParameters(slicedParameters);
+
     setGenLoading(true);
     const formData = new FormData();
     if (file) {
@@ -423,7 +495,8 @@ export default function Home() {
           allResults.push(data.result);
         }
       } else {
-        for (let [index, parameter] of Array.from(parameters.entries())) {
+        const gstartTime = performance.now();
+        for (let [index, parameter] of Array.from(slicedParameters.entries())) {
           // Your code here...
           setProcessingIndex(index);
           const sprompt = selectedPrompt.description.replace("$1", parameter);
@@ -435,29 +508,127 @@ export default function Home() {
             headers: undefined, // No need for Content-Type header with FormData
           });
           const endTime = performance.now();
-          const duration = endTime-startTime;
+          const duration = endTime - startTime;
           const formattedDuration = formatDuration(duration);
-          totalTimer+=duration;
+          totalTimer += duration;
           setScriptTotalTimer(totalTimer);
-          setScriptTimers(prevTimers => [...prevTimers, formattedDuration]);
-          
+          setScriptTimers((prevTimers) => [...prevTimers, formattedDuration]);
+
+          const para = encodeURIComponent(parameter);
+          const responsetitle = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/scripts/title/${para}`
+          );
+          const responsetitleresult = await responsetitle.json();
+          if (responsetitleresult.exists) {
+            const existdb = responsetitleresult.script
+            if (isNoUpdate) {
+              allResults.push({
+                id: existdb.id,
+                script: JSON.parse(existdb.gscript),
+                category: existdb.category,
+              });
+              if (index === 0) setCurrentIndex(1);
+              setGeneratedText(allResults);
+              setGenStatus((prevStatus) => {
+                const newStatus = [...prevStatus]; // Create a copy of the previous status array
+                newStatus[index] = "Skipped"; // Replace the status at the specific index
+                return newStatus; // Return the new status array
+              });
+            } else {
+              const data = await response.json();
+
+              const starttime = new Date(gstartTime + performance.timeOrigin);
+              const endtime = new Date(endTime + performance.timeOrigin);
+              existdb.start_time = starttime.toISOString();
+              existdb.end_time = endtime.toISOString();
+              existdb.gscript = JSON.stringify(data.result);
+              existdb.noupdate = isNoUpdate;
+              const updateResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/scripts/${existdb.id}`,
+                {
+                  method: "PUT",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(existdb),
+                }
+              );
+
+              if (!updateResponse.ok) {
+                throw new Error("Failed to update script");
+              }
+
+              const updatedScript = await updateResponse.json();
+
+              allResults.push({
+                id: updatedScript.id,
+                script: JSON.parse(updatedScript.gscript),
+                category: updatedScript.category,
+              });
+              if (index === 0) setCurrentIndex(1);
+              setGeneratedText(allResults);
+              setGenStatus((prevStatus) => {
+                const newStatus = [...prevStatus]; // Create a copy of the previous status array
+                newStatus[index] = "Updated"; // Replace the status at the specific index
+                return newStatus; // Return the new status array
+              });
+            }
+            continue;
+          }
+         
           const data = await response.json();
+          let category = null;
+
+          if (isGenCategory) {
+            category = await getCategory(parameter);
+          }
+
           if (data.error) {
             console.error(data.error);
           } else {
-            allResults.push(data.result);
+            const result = await addScript(
+              parameter,
+              JSON.stringify(data.result),
+              gstartTime,
+              endTime,
+              category
+            );
+            allResults.push({
+              id: result.id,
+              script: data.result,
+              category: category,
+            });
+            if (index === 0) setCurrentIndex(1);
             setGeneratedText(allResults);
+            setGenStatus((prevStatus) => {
+              const newStatus = [...prevStatus]; // Create a copy of the previous status array
+              newStatus[index] = "Added"; // Replace the status at the specific index
+              return newStatus; // Return the new status array
+            });
           }
         }
       }
       setGenerated(true);
       setGeneratedText(allResults);
-      console.log(allResults);
     } catch (error) {
       console.error("Error generating conversation:", error);
     } finally {
       setGenLoading(false);
     }
+  };
+  const getCategory = async (title: string) => {
+    const formData = new FormData();
+    formData.append("text", title); // Use the title parameter
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/generate-category-by-title`,
+      {
+        method: "POST",
+        body: formData,
+        headers: undefined,
+      }
+    );
+    const data = await response.json();
+    return data.result;
   };
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
@@ -466,7 +637,38 @@ export default function Home() {
       setFileUploaded(true);
     }
   };
+  const saveGeneratedChanges = async () => {
+    const id = generatedText[currentIndex - 1].id;
+    const title = parameters[currentIndex - 1];
 
+    // Fetch the existing script data
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/scripts/${id}`
+    );
+    const scriptData = await response.json();
+    // Update the necessary fields
+    scriptData.title = title;
+    scriptData.gscript = JSON.stringify(generatedText[currentIndex - 1].script);
+    scriptData.category = generatedText[currentIndex - 1].category;
+    // Send a PUT request to the server with the updated data
+    const updateResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/scripts/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scriptData),
+      }
+    );
+
+    if (!updateResponse.ok) {
+      throw new Error("Failed to update script");
+    }
+
+    const updatedScript = await updateResponse.json();
+    return updatedScript;
+  };
   return (
     <main
       className="flex min-h-screen flex-col items-center justify-between w-full"
@@ -484,13 +686,34 @@ export default function Home() {
           <div className="flex w-full drop-shadow-lg  gap-8">
             <div className="w-1/4">
               <div className="w-full bg-slate-800 px-4 py-4 rounded-xl border-l-4 border-sky-500 flex flex-col gap-3">
-                <div className="flex items-center gap-4 py-1">
-                  <span className="text-white">Text Mode: </span>
-                  <Switch
-                    onChange={() => setTextMode(!textMode)}
-                    checked={textMode}
-                    id="checkbox"
-                  />
+                <div className="flex flex-row justify-between">
+                  <div className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      id="checkbox"
+                      checked={textMode}
+                      onChange={() => setTextMode(!textMode)}
+                    />
+                    <span className="text-white">Mode </span>
+                  </div>
+                  <div className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      id="checkbox1"
+                      checked={isGenCategory}
+                      onChange={() => setIsGenCategory(!isGenCategory)}
+                    />
+                    <span className="text-white">Category</span>
+                  </div>
+                  <div className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      id="checkbox2"
+                      checked={isNoUpdate}
+                      onChange={() => setIsNoUpdate(!isNoUpdate)}
+                    />
+                    <span className="text-white">No Update</span>
+                  </div>
                 </div>
                 {!textMode ? (
                   <div className="flex items-center justify-center w-full">
@@ -563,7 +786,7 @@ export default function Home() {
                       onChange={handlePromptChange} // Add onChange handler
                     >
                       {prompts.map((prompt, index) => (
-                        <option key={index} value={prompt.id}>
+                        <option key={index} value={index}>
                           {prompt.title}
                         </option>
                       ))}
@@ -573,32 +796,16 @@ export default function Home() {
                       title="Add New Prompt"
                       onClick={() => setIsAddModalOpen(true)}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+                      <AiFillPlusSquare
+                        style={{ width: "20px", height: "20px" }}
+                      />
                     </button>
                     <button
                       className="px-2 text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
                       title="Edit Prompts"
                       onClick={() => setIsEditModalOpen(true)}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                      </svg>
+                      <AiFillEdit style={{ width: "20px", height: "20px" }} />
                     </button>
                     <button
                       className="px-2 text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
@@ -643,7 +850,7 @@ export default function Home() {
                       onChange={handleUserPromptChange}
                     >
                       {userPrompts.map((prompt, index) => (
-                        <option key={index} value={prompt.id}>
+                        <option key={index} value={index}>
                           {prompt.title}
                         </option>
                       ))}
@@ -653,32 +860,16 @@ export default function Home() {
                       title="Add New User Prompt"
                       onClick={() => setIsUserAddModalOpen(true)}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+                      <AiFillPlusSquare
+                        style={{ width: "20px", height: "20px" }}
+                      />
                     </button>
                     <button
                       className="px-2  text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center"
                       title="Edit User Prompts"
                       onClick={() => setIsUserEditModalOpen(true)}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                      </svg>
+                      <AiFillEdit style={{ width: "20px", height: "20px" }} />
                     </button>
                   </div>
                   <textarea
@@ -806,40 +997,63 @@ export default function Home() {
 
             <div className="w-3/4 flex flex-col gap-3 ">
               <h1 className="text-white/80 w-full font-extrabold text-4xl py-6 px-8 drop-shadow-lg bg-slate-800 rounded-xl border-l-4 border-sky-500">
-                Podcast AI <span className="text-white">1.0.1</span>
+                Podcast AI <span className="text-white">1.1.1</span>
               </h1>
 
               <div className="w-full flex flex-col h-[740px]">
-                <div className="w-full h-12  bg-slate-600 rounded-t-xl flex justify-between items-center p-2  ">
+                <div className="w-full h-12   bg-slate-600 rounded-t-xl flex justify-between items-center p-2  ">
                   {/* {audioURL && ( */}
-                  {genLoading ? (
-                    <p className="pl-10 text-white text-[16px]">
-                      Processing Script generation item:{processingIndex + 1}/
-                      {parameters.length}{" "}
-                      <span className="text-red-500">
-                        ({parameters[processingIndex]})
-                      </span>{" "}
-                    </p>
-                  ) : (
-                    <div></div>
-                  )}
-                  {audioLoading ? (
-                    <p className="pl-10 text-white text-[16px]">
-                      Processing Audio generation item:{processingIndex + 1}/
-                      {parameters.length}{" "}
-                      <span className="text-red-500">
-                        ({parameters[processingIndex]})
-                      </span>{" "}
-                    </p>
-                  ) : (
-                    <div></div>
-                  )}
+                  <div className="flex flex-col">
+                    {genLoading ? (
+                      <p className="pl-10 text-white text-[16px]">
+                        Processing Script generation item:{processingIndex + 1}/
+                        {parameters.length}{" "}
+                        <span className="text-red-500">
+                          (
+                          {parameters[processingIndex].length > 40
+                            ? `${parameters[processingIndex].slice(0, 40)}...`
+                            : parameters[processingIndex]}
+                          )
+                        </span>{" "}
+                      </p>
+                    ) : (
+                      <></>
+                    )}
 
+                    {audioLoading ? (
+                      <p className="pl-10 text-white text-[16px]">
+                        Processing Audio generation item:{processingIndex + 1}/
+                        {parameters.length}{" "}
+                        <span className="text-red-500">
+                          ({parameters[processingIndex]})
+                        </span>{" "}
+                      </p>
+                    ) : (
+                      <div></div>
+                    )}
+                    {generatedText.length > 0 && (
+                      <Title
+                        currentIndex={currentIndex}
+                        parameters={parameters}
+                        isEditGeneratedText={isEditGeneratedText}
+                        setParameters={setParameters}
+                        generatedText={generatedText}
+                        setGeneratedText={setGeneratedText}
+                        genStatus={genStatus}
+                      />
+                    )}
+                  </div>
                   <div className="flex gap-2 items-center">
                     <button
                       className="  text-white bg-cyan-500 px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
                       onClick={() => setCurrentIndex(currentIndex - 1)}
-                      disabled={currentIndex === 1 || !generatedText.length || isPlaying}
+                      disabled={
+                        currentIndex === 1 ||
+                        !generatedText.length ||
+                        isPlaying ||
+                        isEditGeneratedText ||
+                        isEditGeneratedTextSave
+                      }
                     >
                       <AiOutlineArrowLeft
                         style={{ width: "24px", height: "24px" }}
@@ -858,7 +1072,9 @@ export default function Home() {
                       disabled={
                         currentIndex === generatedText.length ||
                         !generatedText.length ||
-                        isPlaying
+                        isPlaying ||
+                        isEditGeneratedText ||
+                        isEditGeneratedTextSave
                       }
                     >
                       <AiOutlineArrowRight
@@ -869,7 +1085,11 @@ export default function Home() {
                     <button
                       onClick={handleAudioPlay}
                       className="  text-white bg-cyan-500 px-1  py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
-                      disabled={!audioURL || audioURL.length === 0 || !(currentIndex<audioURL.length+1)}
+                      disabled={
+                        !audioURL ||
+                        audioURL.length === 0 ||
+                        !(currentIndex < audioURL.length + 1)
+                      }
                     >
                       {isPlaying ? (
                         <AiFillPauseCircle
@@ -881,10 +1101,17 @@ export default function Home() {
                         />
                       )}
                     </button>
-                    {!(!audioURL || audioURL.length === 0||!(currentIndex<audioURL.length+1)) && (
+
+                    {!(
+                      !audioURL ||
+                      audioURL.length === 0 ||
+                      !(currentIndex < audioURL.length + 1)
+                    ) && (
                       <a
                         href={audioURL[currentIndex - 1]}
-                        download="generated_audio"
+                        download={formatDownloadFile(
+                          parameters[currentIndex - 1]
+                        )}
                         className={`text-white bg-cyan-500 flex px-1 py-1 justify-center items-center rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer`}
                       >
                         <AiOutlineDownload
@@ -892,33 +1119,126 @@ export default function Home() {
                         />
                       </a>
                     )}
+                    <button
+                      className="  text-white bg-cyan-500 relative px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                      onClick={() => setModalStatus(ModalStatus.SetStartIndex)}
+                      disabled={!parameters.length}
+                    >
+                      <AiOutlineRotateRight
+                        style={{ width: "24px", height: "24px" }}
+                      />
+                      {parameters.length > 0 && (
+                        <div className="absolute -top-1 -right-1 flex justify-center items-center w-[16px] h-[16px] rounded-full  bg-white">
+                          <p className=" text-[12px] text-red-600   font-bold  ">
+                            {startIndex}
+                          </p>
+                        </div>
+                      )}
+                    </button>
+                    <button
+                      className="  text-white bg-cyan-500 relative px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                      onClick={async () => {
+                        if (isEditGeneratedText) {
+                          setIsEditGeneratedTextSave(true); // Set saving status to true before starting the save operation
+                          await saveGeneratedChanges(); // Replace this with your actual save function
+                          setIsEditGeneratedTextSave(false); // Set saving status to false after the save operation is complete
+                        }
+                        setIsEditGeneratedText(!isEditGeneratedText);
+                      }}
+                      disabled={
+                        !generatedText.length || isEditGeneratedTextSave
+                      }
+                    >
+                      {isEditGeneratedTextSave ? (
+                        <Circles style={{ width: "24px", height: "24px" }} /> // Replace this with your actual loading spinner component
+                      ) : isEditGeneratedText ? (
+                        <AiTwotoneSave
+                          style={{ width: "24px", height: "24px" }}
+                        />
+                      ) : (
+                        <AiFillEdit style={{ width: "24px", height: "24px" }} />
+                      )}
+                    </button>
+
+                    <button
+                      className="  text-white bg-cyan-500 px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                      onClick={async () => {
+                        if (modalStatus === ModalStatus.HistoryModal) {
+                          setModalStatus(ModalStatus.Closed);
+                        } else {
+                          setHistoryLoading(true);
+                          await fetchHistoryData();
+                          setHistoryLoading(false);
+                          setModalStatus(ModalStatus.HistoryModal);
+                        }
+                      }}
+                    >
+                      {historyLoading ? (
+                        <Circles style={{ width: "24px", height: "24px" }} />
+                      ) : (
+                        <AiOutlineHistory
+                          style={{ width: "24px", height: "24px" }}
+                        />
+                      )}
+                    </button>
+                    <button
+                      className="  text-white bg-cyan-500 px-1 py-1 justify-center items-center  rounded-lg disabled:bg-cyan-800 hover:bg-cyan-600 cursor-pointer"
+                      onClick={() => setModalStatus(ModalStatus.Download)}
+                      disabled={!audioURL.length || isPlaying}
+                    >
+                      <AiOutlineEllipsis
+                        style={{ width: "24px", height: "24px" }}
+                      />
+                    </button>
                   </div>
                   {/* )} */}
                 </div>
-                <div className="w-full p-5 min-h-[690px]  bg-slate-800 rounded-b-xl relative  flex flex-col overflow-auto ">
-                  {generatedText.length &&(<div className="absolute top-5 right-5 text-white">
-                    <p>Script Timer: {scriptTimers[currentIndex-1] ? scriptTimers[currentIndex-1] : "--:--"}</p>
-                    <p>Total Script Timer: {scriptTotalTimer ? formatDuration(scriptTotalTimer) : "--:--"}</p>
-                    <p>Audio Timer: {audioTimers[currentIndex-1] ? audioTimers[currentIndex-1] : "--:--"}</p>
-                    <p>Total Audio Timer: {audioTotalTimer ? formatDuration(audioTotalTimer) : "--:--"}</p>
-                  </div>)}
-                  {generatedText.length > 0  && generatedText[currentIndex - 1] &&
-                    generatedText[currentIndex - 1].map((message, index) => (
-                      <div
-                        key={index}
-                        className={` max-w-[60%] mb-4 p-3 rounded-lg ${
-                          index % 2 === 1
-                            ? "bg-blue-500 text-white self-end"
-                            : "bg-gray-300 text-black self-start"
-                        }`}
-                      >
-                        <p>{message.text}</p>
-                      </div>
-                    ))}
+                <div className="w-full  min-h-[690px] relative  bg-slate-800 rounded-b-xl ">
+                  <HistoryModal
+                    isOpen={modalStatus}
+                    onClose={() => setModalStatus(ModalStatus.Closed)}
+                    historyData={historyData || []}
+                    setCurrentIndex={setCurrentIndex}
+                    setGeneratedText={setGeneratedText}
+                    setParameters={setParameters}
+                  />
+                  <div className="w-full h-full p-5 relative  flex flex-col overflow-auto  ">
+                    {generatedText.length > 0 && (
+                      <Timer
+                        scriptTimers={scriptTimers}
+                        scriptTotalTimer={scriptTotalTimer}
+                        audioTimers={audioTimers}
+                        audioTotalTimer={audioTotalTimer}
+                        currentIndex={currentIndex}
+                        formatDuration={formatDuration}
+                      />
+                    )}
+                    <GeneratedTextPanel
+                      isEditGeneratedText={isEditGeneratedText}
+                      currentIndex={currentIndex}
+                      generatedText={generatedText}
+                      setGeneratedText={setGeneratedText}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
+          <DownloadModal
+            isOpen={modalStatus}
+            onClose={() => setModalStatus(ModalStatus.Closed)}
+            audioUrls={audioURL}
+            parameters={parameters}
+          />
+          <SetStartIndexModal
+            isOpen={modalStatus}
+            onClose={() => setModalStatus(ModalStatus.Closed)}
+            startIndex={startIndex}
+            setStartIndex={setStartIndex}
+            limit={parameters.length}
+          />
+
           {isAddModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
               <div className="bg-slate-800 p-6 rounded-lg w-96">

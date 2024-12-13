@@ -70,3 +70,6 @@ This guide will help you set up and run the project, which consists of a fronten
    ```
 
    This will start the backend server, accessible at `http://localhost:8080`.
+
+
+   >gcloud run deploy --image us-west1-docker.pkg.dev/bookcastlm/mybackend/mybackend --platform managed --project bookcastlm

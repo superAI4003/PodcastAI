@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from elevenlabs import Voice, VoiceSettings, play
 import glob
+import time
+from google.api_core.exceptions import ResourceExhausted
+
 load_dotenv()
 
 # Add this line with the other environment variable
@@ -21,7 +24,7 @@ client = texttospeech.TextToSpeechClient()
 elevenlabs_client = ElevenLabs(api_key=elevenlabs_api_key)
 
 
-def synthesize_speech_google(text, speaker, index,speaker_voice_map):
+def synthesize_speech_google(text, speaker, index, speaker_voice_map):
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
         language_code="en-US",
@@ -30,13 +33,28 @@ def synthesize_speech_google(text, speaker, index,speaker_voice_map):
     audio_config = texttospeech.AudioConfig(
         audio_encoding=texttospeech.AudioEncoding.LINEAR16
     )
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
-    filename = f"media/audio-files/{index}_{speaker}.mp3"
-    with open(filename, "wb") as out:
-        out.write(response.audio_content)
-    print(f'Audio content written to file "{filename}"')
+
+    retry_count = 0
+    delay = 2  # delay in seconds
+
+    while True:
+        try:
+            response = client.synthesize_speech(
+                input=synthesis_input, voice=voice, audio_config=audio_config
+            )
+            filename = f"media/audio-files/{index}_{speaker}.mp3"
+            with open(filename, "wb") as out:
+                out.write(response.audio_content)
+            print(f'Audio content written to file "{filename}"')
+            break  # If successful, break the loop
+        except ResourceExhausted:
+            if retry_count >= 5:  # Maximum retries
+                raise  # If maximum retries exceeded, raise the exception
+            else:
+                print(f"Quota exceeded, retrying in {delay} seconds...")
+                time.sleep(delay)
+                retry_count += 1
+                delay *= 2  # Double the delay for exponential backoff
 
 def synthesize_speech_elevenlabs(text, speaker, index, speaker_voice_map):
     audio_generator = elevenlabs_client.generate(
@@ -74,9 +92,9 @@ def natural_sort_key(filename):
     return [int(text) if text.isdigit() else text for text in re.split(r'(\d+)', filename)]
 # 
 
-def generate_audio(conversation, currentSpeaker):
+def generate_audio(conversation, currentSpeaker, id):
     audio_folder = "media/audio-files"
-    output_file = "media/podcast.mp3"
+    output_file = "media/podcast"+id+".mp3"
     files = glob.glob('media/audio-files/*')
     for f in files:
         if os.path.exists(f):  # Check if file exists
@@ -111,7 +129,9 @@ def merge_audios(audio_folder, output_file, limit):
         audio = AudioSegment.from_file(audio_path)
         combined += audio
     combined.export(output_file, format="mp3")
+    
     print(f"Merged audio saved as {output_file}")
+    return output_file
 
 
 def get_voice_list():

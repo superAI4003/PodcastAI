@@ -2,7 +2,7 @@ from fastapi import APIRouter, File, UploadFile, Form
 from fastapi.responses import JSONResponse, FileResponse
 from utils.get_text import get_text_from_audio, get_text_from_video, get_text_from_image
 from utils.generation_audio import generate_audio, get_voice_list, get_elevenlabs_voices_list
-from utils.generation_conversation import generate_conversation
+from utils.generation_conversation import generate_conversation,generate_category
 import json
 router = APIRouter()
 
@@ -35,10 +35,15 @@ async def generate_conversation_by_text_endpoint(text: str = Form(...), prompt: 
     result = generate_conversation(prompt, text,userPrompt)
     return {"result": result}
 
+@router.post("/generate-category-by-title")
+async def generate_category_by_title_endpoint(text: str = Form(...)): 
+    result = generate_category(text)
+    return {"result": result}
+
 @router.post("/generate-audio")
-async def generate_audio_endpoint(conversation: str = Form(...),currentSpeaker:str=Form(...)):
-    audio_file_path = generate_audio(conversation,currentSpeaker)
-    return FileResponse('media/podcast.mp3', media_type="audio/mpeg", filename="podcast.mp3")
+async def generate_audio_endpoint(conversation: str = Form(...),currentSpeaker:str=Form(...), id:str=Form(...)):
+    audio_file_path = generate_audio(conversation,currentSpeaker,id)
+    return FileResponse("media/podcast"+id+".mp3", media_type="audio/mpeg", filename="podcast.mp3")
 
 @router.post("/get-voice-list")
 async def get_voice_list_endpoint():

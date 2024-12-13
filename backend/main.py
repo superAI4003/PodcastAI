@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 import os
 from database import engine
 import models
-from routes import prompts, generation, userprompts
+from routes import prompts, generation, userprompts,scripts
 from google.cloud import texttospeech
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-
+from fastapi.staticfiles import StaticFiles
 
 
 # Create tables
@@ -16,7 +16,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="My backend"
 )
-
+app.mount("/media", StaticFiles(directory="media"), name="media")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,5 +32,6 @@ google_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 # Include routers
 app.include_router(prompts.router, prefix="/prompts", tags=["prompts"])
+app.include_router(scripts.router, prefix="/scripts", tags=["scripts"])
 app.include_router(userprompts.router, prefix="/userprompts", tags=["userprompts"])
 app.include_router(generation.router, tags=["generation"])
